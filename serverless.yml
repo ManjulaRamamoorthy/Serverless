@@ -1,0 +1,69 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: serverless
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: us-east-1
+  environment:
+    PAYMENT_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:Scan*"
+        - "dynamodb:Get*"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+        - "events:Put*"
+      Resource: "*"
+
+functions:
+  processVendorPayment:
+    handler: createPayment.processVendorPayment
+  processClientPayment:
+    handler: createPayment.processClientPayment
+  createPayment:
+    handler: createPayment.createPayment
+    events:
+      - httpApi:
+          path: /pay
+          method: post
+
+# you can add CloudFormation resource templates here
+resources:
+  Resources:
+    CandidatesDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: "paymentId"
+            AttributeType: "S" 
+        KeySchema:
+          - AttributeName: "paymentId"
+            KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.PAYMENT_TABLE}
